@@ -12,17 +12,19 @@ ENV PYTHONUNBUFFERED=1 \
     DISPLAY=:99 \
     LC_ALL=C.UTF-8 \
     LANG=C.UTF-8 \
-    # Default admin credentials (will be overridden by Railway environment variables)
-    ADMIN_USERNAME=Mani \
-    ADMIN_CODE=ADMIN_MASTER
+    STREAMLIT_SERVER_PORT=8501 \
+    STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
+    STREAMLIT_SERVER_HEADLESS=true \
+    STREAMLIT_SERVER_ENABLE_CORS=true \
+    STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 
-# Create a non-root user with minimal setup
+# Create a non-root user
 RUN adduser --disabled-password --gecos "" app_user
 
 # Set working directory
 WORKDIR /app
 
-# Create all required directories in one layer
+# Create required directories
 RUN mkdir -p /home/app_user/.streamlit \
              /home/app_user/.cache/yt-dlp \
              /home/app_user/.cache/youtube-dl \
@@ -32,7 +34,7 @@ RUN mkdir -p /home/app_user/.streamlit \
              /home/app_user/.config/google-chrome \
              /app/logs
 
-# Install system dependencies and Chrome in a single layer
+# Install system dependencies and Chrome
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libsm6 \
@@ -48,6 +50,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config \
     sqlite3 \
     procps \
+    netcat \
     && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
     && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list \
     && apt-get update \
@@ -55,14 +58,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first and install dependencies
+# Copy requirements and install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the entire project first
+# Copy the project
 COPY . .
 
-# Copy specific directories to their locations
+# Copy Streamlit config
 COPY .streamlit/config.toml /home/app_user/.streamlit/config.toml
 
 # Set permissions
@@ -70,16 +73,18 @@ RUN chown -R app_user:app_user /app /home/app_user && \
     chmod -R 755 /app && \
     chmod -R 777 /app/credentials /app/analysis_temp /app/example_videos /app/logs /home/app_user/.config /home/app_user/.streamlit /home/app_user/.cache
 
-# Switch to non-root user
-USER app_user
+# Create healthcheck script
+RUN echo '#!/bin/bash\n\
+nc -z localhost ${PORT} || exit 1\n\
+curl -f http://localhost:${PORT}/_stcore/health || exit 1' > /app/healthcheck.sh && \
+    chmod +x /app/healthcheck.sh
 
-# Create an entrypoint script that handles environment variables
+# Create entrypoint script
 RUN echo '#!/bin/bash\n\
 set -e\n\
 \n\
 echo "[$(date)] Starting container setup..."\n\
 \n\
-# Function to log with timestamp\n\
 log() {\n\
     echo "[$(date)] $1"\n\
 }\n\
@@ -133,16 +138,25 @@ exec streamlit run streamlit_app.py \\\n\
     --server.port=${PORT} \\\n\
     --server.address=0.0.0.0 \\\n\
     --server.maxUploadSize=50 \\\n\
-    --server.enableXsrfProtection=true \\\n\
+    --server.enableXsrfProtection=false \\\n\
     --server.enableCORS=true \\\n\
     --server.headless=true \\\n\
+    --server.enableWebsocketCompression=false \\\n\
+    --server.enableStaticServing=true \\\n\
     --logger.level=debug \\\n\
     --logger.messageFormat="%(asctime)s %(levelname)s: %(message)s" \\\n\
     2>&1 | tee -a /app/logs/app.log' > /app/entrypoint.sh && \
     chmod +x /app/entrypoint.sh
 
-# Expose the port from environment variable
+# Switch to non-root user
+USER app_user
+
+# Expose port
 EXPOSE ${PORT}
+
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=30s --start-period=180s --retries=3 \
+    CMD /app/healthcheck.sh
 
 # Set the entrypoint
 ENTRYPOINT ["/app/entrypoint.sh"] 
