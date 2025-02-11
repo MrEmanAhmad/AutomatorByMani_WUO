@@ -16,7 +16,7 @@ ENV PYTHONUNBUFFERED=1 \
 # Create a non-root user with minimal setup
 RUN adduser --disabled-password --gecos "" app_user
 
-# Set working directory and create necessary directories
+# Set working directory
 WORKDIR /app
 
 # Create all required directories in one layer
@@ -49,14 +49,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install dependencies
+# Copy requirements first and install dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application files
-COPY .streamlit/config.toml /home/app_user/.streamlit/config.toml
-COPY example_videos/ /app/example_videos/
+# Copy the entire project first
 COPY . .
+
+# Copy specific directories to their locations
+COPY .streamlit/config.toml /home/app_user/.streamlit/config.toml
 
 # Set permissions
 RUN chown -R app_user:app_user /app /home/app_user && \
@@ -67,7 +68,11 @@ RUN chown -R app_user:app_user /app /home/app_user && \
 USER app_user
 
 # Expose port
-EXPOSE ${PORT:-8501}
+EXPOSE ${PORT}
 
-# Start Streamlit
-CMD ["streamlit", "run", "streamlit_app.py", "--server.port=${PORT:-8501}", "--server.address=0.0.0.0"] 
+# Create an entrypoint script
+RUN echo '#!/bin/bash\nstreamlit run streamlit_app.py --server.port=$PORT --server.address=0.0.0.0' > /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh
+
+# Use the entrypoint script
+CMD ["/app/entrypoint.sh"] 
