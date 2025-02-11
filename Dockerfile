@@ -29,7 +29,8 @@ RUN mkdir -p /home/app_user/.streamlit \
              /app/credentials \
              /app/analysis_temp \
              /app/example_videos \
-             /home/app_user/.config/google-chrome
+             /home/app_user/.config/google-chrome \
+             /app/logs
 
 # Install system dependencies and Chrome in a single layer
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -66,38 +67,58 @@ COPY .streamlit/config.toml /home/app_user/.streamlit/config.toml
 # Set permissions
 RUN chown -R app_user:app_user /app /home/app_user && \
     chmod -R 755 /app && \
-    chmod -R 777 /app/credentials /app/analysis_temp /app/example_videos /home/app_user/.config /home/app_user/.streamlit /home/app_user/.cache
+    chmod -R 777 /app/credentials /app/analysis_temp /app/example_videos /app/logs /home/app_user/.config /home/app_user/.streamlit /home/app_user/.cache
 
 # Switch to non-root user
 USER app_user
 
 # Create an entrypoint script that handles environment variables
 RUN echo '#!/bin/bash\n\
-# Create directories if they dont exist\n\
+set -e\n\
+\n\
+# Create log directory\n\
+mkdir -p /app/logs\n\
+touch /app/logs/app.log\n\
+chmod 666 /app/logs/app.log\n\
+\n\
+# Create directories\n\
 mkdir -p /app/credentials\n\
 mkdir -p /app/analysis_temp\n\
 mkdir -p /app/example_videos\n\
 \n\
-# Set proper permissions\n\
+# Set permissions\n\
 chown -R app_user:app_user /app/credentials\n\
 chmod -R 777 /app/credentials\n\
 \n\
-# Initialize empty database if it doesnt exist\n\
+# Initialize database\n\
 if [ ! -f /app/credentials/auth.db ]; then\n\
+    echo "Initializing database..."\n\
     sqlite3 /app/credentials/auth.db "PRAGMA journal_mode=WAL;"\n\
     chown app_user:app_user /app/credentials/auth.db\n\
     chmod 666 /app/credentials/auth.db\n\
 fi\n\
 \n\
-# Create .env file from environment variables\n\
-echo "ADMIN_USERNAME=${ADMIN_USERNAME:-Mani}" > /app/.env\n\
-echo "ADMIN_CODE=${ADMIN_CODE:-Manigujjar01!}" >> /app/.env\n\
-echo "OPENAI_API_KEY=${OPENAI_API_KEY}" >> /app/.env\n\
-echo "DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}" >> /app/.env\n\
-echo "GOOGLE_APPLICATION_CREDENTIALS_JSON=${GOOGLE_APPLICATION_CREDENTIALS_JSON}" >> /app/.env\n\
+# Create .env file\n\
+echo "Creating .env file..."\n\
+cat > /app/.env << EOL\n\
+ADMIN_USERNAME=${ADMIN_USERNAME:-Mani}\n\
+ADMIN_CODE=${ADMIN_CODE:-Manigujjar01!}\n\
+OPENAI_API_KEY=${OPENAI_API_KEY}\n\
+DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}\n\
+GOOGLE_APPLICATION_CREDENTIALS_JSON=${GOOGLE_APPLICATION_CREDENTIALS_JSON}\n\
+CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME}\n\
+CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY}\n\
+CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}\n\
+TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}\n\
+EOL\n\
 \n\
-# Start Streamlit with the PORT from environment\n\
-exec streamlit run streamlit_app.py --server.port=${PORT} --server.address=0.0.0.0' > /app/entrypoint.sh && \
+echo "Starting Streamlit..."\n\
+exec streamlit run streamlit_app.py \\\n\
+    --server.port=${PORT} \\\n\
+    --server.address=0.0.0.0 \\\n\
+    --logger.level=debug \\\n\
+    --logger.messageFormat="%(asctime)s %(levelname)s: %(message)s" \\\n\
+    2>&1 | tee -a /app/logs/app.log' > /app/entrypoint.sh && \
     chmod +x /app/entrypoint.sh
 
 # Expose the port from environment variable

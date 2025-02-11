@@ -3,8 +3,10 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "streamlit run streamlit_app.py --server.address=0.0.0.0 --server.port=${PORT}"
-healthcheckPath = "/"
+startCommand = "streamlit run streamlit_app.py --server.address=0.0.0.0 --server.port=${PORT} --logger.level=debug"
+healthcheckPath = "/_stcore/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 3 
+restartPolicyMaxRetries = 3
+healthcheckInterval = 15
+healthcheckStartPeriod = 60 
