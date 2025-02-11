@@ -1,6 +1,7 @@
 # Git
 .git
 .gitignore
+.gitattributes
 
 # Python
 __pycache__/
@@ -23,26 +24,61 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+*.pyc
+.pytest_cache/
 
 # Virtual Environment
 venv/
 ENV/
 .env
+.venv/
+env/
 
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+.project
+.pydevproject
+.settings
 
 # Project specific
-credentials/
+credentials/*
+!credentials/.gitkeep
 analysis_*/
 *.log
 temp_*/
 bot.log*
+output_*/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
 # Docker
 .docker
-Dockerfile
-docker-compose.yml 
+docker-compose*.yml
+*.dockerfile
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# Large media files
+*.mp4
+*.wav
+*.mp3
+*.avi
+*.mov
+!example_videos/*.mp4
+!example_videos/*.avi
+!example_videos/*.mov 
