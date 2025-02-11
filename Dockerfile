@@ -72,6 +72,11 @@ USER app_user
 
 # Create an entrypoint script that handles environment variables
 RUN echo '#!/bin/bash\n\
+# Create directories if they dont exist\n\
+mkdir -p /app/credentials\n\
+mkdir -p /app/analysis_temp\n\
+mkdir -p /app/example_videos\n\
+\n\
 # Create .env file from environment variables\n\
 echo "ADMIN_USERNAME=${ADMIN_USERNAME}" > /app/.env\n\
 echo "ADMIN_CODE=${ADMIN_CODE}" >> /app/.env\n\
@@ -79,12 +84,12 @@ echo "OPENAI_API_KEY=${OPENAI_API_KEY}" >> /app/.env\n\
 echo "DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}" >> /app/.env\n\
 echo "GOOGLE_APPLICATION_CREDENTIALS_JSON=${GOOGLE_APPLICATION_CREDENTIALS_JSON}" >> /app/.env\n\
 \n\
-# Start Streamlit\n\
-streamlit run streamlit_app.py --server.port=$PORT --server.address=0.0.0.0' > /app/entrypoint.sh && \
+# Start Streamlit with the PORT from environment\n\
+exec streamlit run streamlit_app.py --server.port=${PORT} --server.address=0.0.0.0' > /app/entrypoint.sh && \
     chmod +x /app/entrypoint.sh
 
-# Expose port
+# Expose the port from environment variable
 EXPOSE ${PORT}
 
-# Use the entrypoint script
-CMD ["/app/entrypoint.sh"] 
+# Set the entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"] 

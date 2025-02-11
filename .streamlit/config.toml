@@ -1,11 +1,13 @@
 [server]
+port = 8501
+address = "0.0.0.0"
+maxUploadSize = 50
+enableXsrfProtection = true
 enableCORS = false
-enableXsrfProtection = false
-headless = true
 
 [browser]
-gatherUsageStats = false
 serverAddress = "0.0.0.0"
+gatherUsageStats = false
 
 [theme]
 primaryColor = "#2196F3"
