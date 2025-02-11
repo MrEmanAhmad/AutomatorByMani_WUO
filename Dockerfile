@@ -34,7 +34,7 @@ RUN mkdir -p /home/app_user/.streamlit \
              /home/app_user/.config/google-chrome \
              /app/logs
 
-# Install system dependencies and Chrome
+# Install system dependencies (split into multiple RUN commands for better caching)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libsm6 \
@@ -51,12 +51,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     sqlite3 \
     procps \
     netcat \
-    && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
-    && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Chrome (in a separate RUN command)
+RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | tee /etc/apt/sources.list.d/google-chrome.list \
     && apt-get update \
     && apt-get install -y --no-install-recommends google-chrome-stable \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && google-chrome --version
 
 # Copy requirements and install dependencies
 COPY requirements.txt .
