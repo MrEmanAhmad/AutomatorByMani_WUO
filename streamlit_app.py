@@ -283,6 +283,28 @@ try:
             Transform your videos with AI-powered commentary in multiple styles and languages.
             Upload a video or provide a URL to get started!
         """)
+
+        # Example Videos Section
+        with st.expander("🎥 View Example Videos"):
+            st.markdown("### Example Videos")
+            st.markdown("Here are some sample videos to demonstrate the capabilities:")
+            
+            example_videos_dir = Path("example_videos")
+            col1, col2 = st.columns(2)
+            
+            if example_videos_dir.exists():
+                videos = list(example_videos_dir.glob("*.mp4"))
+                for idx, video_path in enumerate(videos):
+                    with col1 if idx % 2 == 0 else col2:
+                        st.markdown(f"**Example {idx + 1}**")
+                        with open(video_path, 'rb') as video_file:
+                            st.video(video_file.read())
+                        if st.button(f"Process Example {idx + 1}", key=f"example_{idx}"):
+                            video_url = f"file://{video_path.absolute()}"
+                            st.session_state.video_url = video_url
+                            asyncio.run(process_video())
+            else:
+                st.warning("Example videos directory not found.")
         
         # Sidebar for settings
         with st.sidebar:
