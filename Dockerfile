@@ -45,6 +45,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     python3-dev \
     pkg-config \
+    sqlite3 \
     && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
     && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list \
     && apt-get update \
@@ -77,9 +78,20 @@ mkdir -p /app/credentials\n\
 mkdir -p /app/analysis_temp\n\
 mkdir -p /app/example_videos\n\
 \n\
+# Set proper permissions\n\
+chown -R app_user:app_user /app/credentials\n\
+chmod -R 777 /app/credentials\n\
+\n\
+# Initialize empty database if it doesnt exist\n\
+if [ ! -f /app/credentials/auth.db ]; then\n\
+    sqlite3 /app/credentials/auth.db "PRAGMA journal_mode=WAL;"\n\
+    chown app_user:app_user /app/credentials/auth.db\n\
+    chmod 666 /app/credentials/auth.db\n\
+fi\n\
+\n\
 # Create .env file from environment variables\n\
-echo "ADMIN_USERNAME=${ADMIN_USERNAME}" > /app/.env\n\
-echo "ADMIN_CODE=${ADMIN_CODE}" >> /app/.env\n\
+echo "ADMIN_USERNAME=${ADMIN_USERNAME:-Mani}" > /app/.env\n\
+echo "ADMIN_CODE=${ADMIN_CODE:-Manigujjar01!}" >> /app/.env\n\
 echo "OPENAI_API_KEY=${OPENAI_API_KEY}" >> /app/.env\n\
 echo "DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}" >> /app/.env\n\
 echo "GOOGLE_APPLICATION_CREDENTIALS_JSON=${GOOGLE_APPLICATION_CREDENTIALS_JSON}" >> /app/.env\n\

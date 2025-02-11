@@ -3,7 +3,9 @@ port = 8501
 address = "0.0.0.0"
 maxUploadSize = 50
 enableXsrfProtection = true
-enableCORS = false
+enableCORS = true
+headless = true
+runOnSave = false
 
 [browser]
 serverAddress = "0.0.0.0"
@@ -17,4 +19,5 @@ textColor = "#262730"
 font = "sans serif"
 
 [logger]
-level = "info" 
+level = "info"
+messageFormat = "%(asctime)s %(levelname)s: %(message)s" 
