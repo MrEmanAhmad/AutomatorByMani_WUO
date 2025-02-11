@@ -11,7 +11,10 @@ ENV PYTHONUNBUFFERED=1 \
     CHROME_BIN=/usr/bin/google-chrome \
     DISPLAY=:99 \
     LC_ALL=C.UTF-8 \
-    LANG=C.UTF-8
+    LANG=C.UTF-8 \
+    # Default admin credentials (will be overridden by Railway environment variables)
+    ADMIN_USERNAME=Mani \
+    ADMIN_CODE=ADMIN_MASTER
 
 # Create a non-root user with minimal setup
 RUN adduser --disabled-password --gecos "" app_user
@@ -67,12 +70,21 @@ RUN chown -R app_user:app_user /app /home/app_user && \
 # Switch to non-root user
 USER app_user
 
+# Create an entrypoint script that handles environment variables
+RUN echo '#!/bin/bash\n\
+# Create .env file from environment variables\n\
+echo "ADMIN_USERNAME=${ADMIN_USERNAME}" > /app/.env\n\
+echo "ADMIN_CODE=${ADMIN_CODE}" >> /app/.env\n\
+echo "OPENAI_API_KEY=${OPENAI_API_KEY}" >> /app/.env\n\
+echo "DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}" >> /app/.env\n\
+echo "GOOGLE_APPLICATION_CREDENTIALS_JSON=${GOOGLE_APPLICATION_CREDENTIALS_JSON}" >> /app/.env\n\
+\n\
+# Start Streamlit\n\
+streamlit run streamlit_app.py --server.port=$PORT --server.address=0.0.0.0' > /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh
+
 # Expose port
 EXPOSE ${PORT}
-
-# Create an entrypoint script
-RUN echo '#!/bin/bash\nstreamlit run streamlit_app.py --server.port=$PORT --server.address=0.0.0.0' > /app/entrypoint.sh && \
-    chmod +x /app/entrypoint.sh
 
 # Use the entrypoint script
 CMD ["/app/entrypoint.sh"] 

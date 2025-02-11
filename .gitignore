@@ -1,6 +1,8 @@
 # Environment variables
 .env
 *.env
+.env.*
+!.env.example
 railway.json
 **/railway.json
 
@@ -43,13 +45,18 @@ analysis_*/
 temp_*/
 bot.log*
 google_credentials.json
+cookies.txt
+api_test.py
+
+# Media files (except example_videos)
 *.mp4
 *.wav
 *.mp3
 *.avi
 *.mov
-cookies.txt
-api_test.py
+!example_videos/*.mp4
+!example_videos/*.avi
+!example_videos/*.mov
 
 # Temporary files
 .DS_Store

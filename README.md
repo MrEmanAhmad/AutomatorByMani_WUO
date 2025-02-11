@@ -47,19 +47,19 @@ Your app will be available at: `https://your-project-name.railway.app`
 ## 📦 Installation
 
 1. Clone the repository:
-```bash
+   ```bash
 git clone <repository-url>
 cd <repository-directory>
 ```
 
 2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+   ```bash
+   pip install -r requirements.txt
+   ```
 
 3. Set up environment variables:
 Copy `.env.example` to `.env` and fill in your values:
-```bash
+   ```bash
 cp .env.example .env
 ```
 
