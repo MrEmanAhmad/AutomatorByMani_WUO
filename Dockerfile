@@ -47,10 +47,14 @@ RUN mkdir -p /home/app_user/.streamlit \
     /home/app_user/.cache/youtube-dl \
     credentials \
     analysis_temp \
+    example_videos \
     /home/app_user/.config/google-chrome
 
 # Copy Streamlit config
 COPY .streamlit/config.toml /home/app_user/.streamlit/config.toml
+
+# Copy example videos
+COPY example_videos/ /app/example_videos/
 
 # Copy the entire application
 COPY . .
@@ -61,10 +65,12 @@ RUN chown -R app_user:app_user /app \
     /home/app_user/.cache \
     credentials \
     analysis_temp \
+    example_videos \
     /home/app_user/.config && \
     chmod -R 755 /app pipeline && \
     chmod -R 777 credentials \
     analysis_temp \
+    example_videos \
     /home/app_user/.config \
     /home/app_user/.streamlit \
     /home/app_user/.cache
