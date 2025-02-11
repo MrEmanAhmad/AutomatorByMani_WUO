@@ -47,6 +47,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-dev \
     pkg-config \
     sqlite3 \
+    procps \
     && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
     && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list \
     && apt-get update \
@@ -76,30 +77,36 @@ USER app_user
 RUN echo '#!/bin/bash\n\
 set -e\n\
 \n\
-# Create log directory\n\
-mkdir -p /app/logs\n\
+echo "[$(date)] Starting container setup..."\n\
+\n\
+# Function to log with timestamp\n\
+log() {\n\
+    echo "[$(date)] $1"\n\
+}\n\
+\n\
+# Create and set up directories\n\
+log "Setting up directories..."\n\
+for dir in /app/logs /app/credentials /app/analysis_temp /app/example_videos; do\n\
+    mkdir -p $dir\n\
+    chown -R app_user:app_user $dir\n\
+    chmod -R 777 $dir\n\
+done\n\
+\n\
+# Set up logging\n\
+log "Setting up logging..."\n\
 touch /app/logs/app.log\n\
 chmod 666 /app/logs/app.log\n\
 \n\
-# Create directories\n\
-mkdir -p /app/credentials\n\
-mkdir -p /app/analysis_temp\n\
-mkdir -p /app/example_videos\n\
-\n\
-# Set permissions\n\
-chown -R app_user:app_user /app/credentials\n\
-chmod -R 777 /app/credentials\n\
-\n\
 # Initialize database\n\
+log "Initializing database..."\n\
 if [ ! -f /app/credentials/auth.db ]; then\n\
-    echo "Initializing database..."\n\
     sqlite3 /app/credentials/auth.db "PRAGMA journal_mode=WAL;"\n\
-    chown app_user:app_user /app/credentials/auth.db\n\
-    chmod 666 /app/credentials/auth.db\n\
+    chown app_user:app_user /app/credentials/auth.db*\n\
+    chmod 666 /app/credentials/auth.db*\n\
 fi\n\
 \n\
 # Create .env file\n\
-echo "Creating .env file..."\n\
+log "Creating .env file..."\n\
 cat > /app/.env << EOL\n\
 ADMIN_USERNAME=${ADMIN_USERNAME:-Mani}\n\
 ADMIN_CODE=${ADMIN_CODE:-Manigujjar01!}\n\
@@ -112,10 +119,23 @@ CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET}\n\
 TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}\n\
 EOL\n\
 \n\
-echo "Starting Streamlit..."\n\
+# Check if critical environment variables are set\n\
+log "Checking environment variables..."\n\
+for var in OPENAI_API_KEY GOOGLE_APPLICATION_CREDENTIALS_JSON; do\n\
+    if [ -z "${!var}" ]; then\n\
+        log "Warning: $var is not set"\n\
+    fi\n\
+done\n\
+\n\
+# Start Streamlit\n\
+log "Starting Streamlit..."\n\
 exec streamlit run streamlit_app.py \\\n\
     --server.port=${PORT} \\\n\
     --server.address=0.0.0.0 \\\n\
+    --server.maxUploadSize=50 \\\n\
+    --server.enableXsrfProtection=true \\\n\
+    --server.enableCORS=true \\\n\
+    --server.headless=true \\\n\
     --logger.level=debug \\\n\
     --logger.messageFormat="%(asctime)s %(levelname)s: %(message)s" \\\n\
     2>&1 | tee -a /app/logs/app.log' > /app/entrypoint.sh && \
