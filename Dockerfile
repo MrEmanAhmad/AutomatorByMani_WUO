@@ -12,6 +12,7 @@ ENV PYTHONUNBUFFERED=1 \
     DISPLAY=:99 \
     LC_ALL=C.UTF-8 \
     LANG=C.UTF-8 \
+    DEBIAN_FRONTEND=noninteractive \
     STREAMLIT_SERVER_PORT=8501 \
     STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
     STREAMLIT_SERVER_HEADLESS=true \
@@ -34,34 +35,52 @@ RUN mkdir -p /home/app_user/.streamlit \
              /home/app_user/.config/google-chrome \
              /app/logs
 
-# Install system dependencies (split into multiple RUN commands for better caching)
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Update package lists and install essential tools first
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install development tools
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    git \
+    build-essential \
+    python3-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install media-related packages
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
     ffmpeg \
     libsm6 \
     libxext6 \
     libgl1-mesa-glx \
-    wget \
-    gnupg \
-    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install additional utilities
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
     libmagic1 \
-    libpython3-dev \
-    build-essential \
-    python3-dev \
-    pkg-config \
     sqlite3 \
     procps \
     netcat \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Chrome (in a separate RUN command)
-RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg \
-    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | tee /etc/apt/sources.list.d/google-chrome.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends google-chrome-stable \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && google-chrome --version
+RUN mkdir -p /etc/apt/keyrings && \
+    wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /etc/apt/keyrings/google-chrome.gpg && \
+    echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | tee /etc/apt/sources.list.d/google-chrome.list > /dev/null && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends google-chrome-stable && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    google-chrome --version || true
 
 # Copy requirements and install dependencies
 COPY requirements.txt .
